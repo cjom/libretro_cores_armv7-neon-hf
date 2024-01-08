@@ -23,7 +23,7 @@ jobs:
           fbneo_latest_version=$(git ls-remote -q https://github.com/libretro/FBNeo HEAD | sed -e 's:\t.*::')
           echo "fbneo_latest_version=${fbneo_latest_version}"
           echo "fbneo_latest_version=${fbneo_latest_version}" >> "$GITHUB_ENV"
-          fbneo_latest_name=${fbneo_latest_version:0:7}
+          fbneo_latest_name=$(echo "${fbneo_latest_version}" | head -c 7)
           echo "fbneo_latest_name=${fbneo_latest_name}"
           echo "fbneo_latest_name=${fbneo_latest_name}" >> "$GITHUB_ENV"
           if [ -e "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip" ]; then
@@ -36,7 +36,7 @@ jobs:
           mame2003plus_latest_version=$(git ls-remote -q https://github.com/libretro/mame2003-plus-libretro HEAD | sed -e 's:\t.*::')
           echo "mame2003plus_latest_version=${mame2003plus_latest_version}"
           echo "mame2003plus_latest_version=${mame2003plus_latest_version}" >> "$GITHUB_ENV"
-          mame2003plus_latest_name=${mame2003plus_latest_version:0:7}
+          mame2003plus_latest_name=$(echo "${mame2003plus_latest_version}" | head -c 7)
           echo "mame2003plus_latest_name=${mame2003plus_latest_name}"
           echo "mame2003plus_latest_name=${mame2003plus_latest_name}" >> "$GITHUB_ENV"
           if [ -e "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip" ]; then
