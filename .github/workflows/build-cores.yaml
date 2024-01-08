@@ -61,7 +61,7 @@ jobs:
           echo "build_core_mame=${build_core_mame}" >> "$GITHUB_ENV"
           echo "build_core_mame2003plus=${build_core_mame2003plus}" >> "$GITHUB_ENV"
       - name: Install compiling tools and Lakka repository
-        if: ${{ ( build_core_fbneo || build_core_mame2003plus || build_core_mame ) && ! cancelled() }}
+        if: ${{ ( env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
         run: |
           cd ..
           pwd
@@ -71,7 +71,7 @@ jobs:
           apt-get install --assume-yes libxml-parser-perl libparse-yapp-perl libjson-perl libncurses5-dev bc gawk wget zstd gperf lzop patchutils sudo curl
           apt-get install --assume-yes aria2 autoconf automake bison bzip2 coreutils flex g++ gcc gzip help2man libtool libtool-bin make p7zip p7zip-full rsync
       - name: Compile fbneo core
-        if: ${{ build_core_fbneo && ! cancelled() }}
+        if: ${{ env.build_core_fbneo && ! cancelled() }}
         run: |
           pwd
           ls -la
@@ -79,7 +79,7 @@ jobs:
           sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${fbneo_latest_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/fbneo/package.mk
           GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/fbneo
       - name: Compile mame2003_plus core
-        if: ${{ build_core_mame2003plus && ! cancelled() }}
+        if: ${{ env.build_core_mame2003plus && ! cancelled() }}
         run: |
           pwd
           ls -la
@@ -87,7 +87,7 @@ jobs:
           sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${mame2003plus_latest_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/mame2003_plus/package.mk
           GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/mame2003_plus
       - name: Compile mame core
-        if: ${{ build_core_mame && ! cancelled() }}
+        if: ${{ env.build_core_mame && ! cancelled() }}
         run: |
           pwd
           ls -la
@@ -95,21 +95,21 @@ jobs:
           sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${mame_tag_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/mame/package.mk
           GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/mame
       - name: Publish new cores
-        if: ${{ ( build_core_fbneo || build_core_mame2003plus || build_core_mame ) && ! cancelled() }}
+        if: ${{ ( env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
         run: |
           pwd
           ls -la
           cd ../Lakka-LibreELEC
           mkdir ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf
-          if build_core_fbneo; then
+          if $build_core_fbneo; then
           find . -name fbneo_libretro.so -type f -exec mv {} ./ \;
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip fbneo_libretro.so
           fi
-          if build_core_mame2003plus; then
+          if $build_core_mame2003plus; then
           find . -name mame2003_plus_libretro.so -type f -exec mv {} ./ \;
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip mame2003_plus_libretro.so
           fi
-          if build_core_mame; then
+          if $build_core_mame; then
           find . -name 'mame*_libretro.so' -type f -exec mv {} ./mame_libretro.so \;
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip mame_libretro.so
           fi
