@@ -103,4 +103,8 @@ jobs:
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip mame_libretro.so
           fi
           cd ../libretro_cores_armv7-neon-hf
+          git config --global --add safe.directory /__w/libretro_cores_armv7-neon-hf/libretro_cores_armv7-neon-hf
+          git config user.name "${GITHUB_REPOSITORY_OWNER}"
+          git config user.email "${GITHUB_REPOSITORY_OWNER}@users.noreply.github.com"
+          git config --local user.password ${GITHUB_TOKEN}
           git add . && git commit -m "New cores compiled" && git push
