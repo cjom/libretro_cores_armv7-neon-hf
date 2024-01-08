@@ -11,6 +11,9 @@ jobs:
     steps:
       - name: Get latest version
         run: |
+          pwd
+          cd ..
+          rm -rf libretro_cores_linux_armhf
           apt-get update
           apt-get install --assume-yes curl git
           git clone --branch main --single-branch https://github.com/cjom/libretro_cores_linux_armhf.git
@@ -32,6 +35,8 @@ jobs:
           apt-get install --assume-yes aria2 autoconf automake bison bzip2 coreutils flex g++ gcc gzip help2man libtool libtool-bin make p7zip p7zip-full rsync
       - name: compile core
         run: |
+          pwd
+          cd ..
           git clone https://github.com/cjom/Lakka-LibreELEC.git
           cd Lakka-LibreELEC
           sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${tag_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/mame/package.mk
