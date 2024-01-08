@@ -9,40 +9,109 @@ jobs:
     runs-on: ubuntu-latest
     container: node:current-buster-slim
     steps:
-      - name: Get latest version
+      - name: Get latest version of cores
         run: |
-          pwd
           cd ..
-          rm -rf libretro_cores_linux_armhf
+          pwd
+          ls -la
+          rm -rf libretro_cores_armv7-neon-hf
           apt-get update
-          apt-get install --assume-yes curl git
-          git clone --branch main --single-branch https://github.com/cjom/libretro_cores_linux_armhf.git
-          tag_version=$(curl -fs https://github.com/libretro/mame/tags | grep -m1 'libretro/mame/commit/' | sed -e 's:^.*libretro/mame/commit/::' -e 's:">.*::')
-          tag_name=$(curl -fs https://github.com/libretro/mame/tags | grep -m1 'libretro/mame/releases/tag/' | sed -e 's:^.*libretro/mame/releases/tag/::' -e 's:".*::')
-          echo "tag_version=$tag_version" >> "$GITHUB_ENV"
-          echo "tag_name=$tag_name" >> "$GITHUB_ENV"
-          echo "tag_name=$tag_name"
-          echo "tag_version=$tag_version"
-          if [ -e "libretro_cores_linux_armhf/cores_armhf/mame_libretro_${tag_name}.zip" ]
-          then
-            echo "libretro_cores_linux_armhf/cores_armhf/mame_libretro.${tag_name}.zip already exists."
-            exit
+          apt-get install --assume-yes git
+          git clone https://github.com/cjom/libretro_cores_armv7-neon-hf.git
+          echo "Core: FBNEO (getting latest version)"
+          build_core_fbneo=${{ false }}
+          fbneo_latest_version=$(git ls-remote -q https://github.com/libretro/FBNeo HEAD | sed -e 's:\t.*::')
+          echo "fbneo_latest_version=${fbneo_latest_version}"
+          echo "fbneo_latest_version=${fbneo_latest_version}" >> "$GITHUB_ENV"
+          fbneo_latest_name=${fbneo_latest_version:0:7}
+          echo "fbneo_latest_name=${fbneo_latest_name}"
+          echo "fbneo_latest_name=${fbneo_latest_name}" >> "$GITHUB_ENV"
+          if [ -e "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip" ]; then
+          echo "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip already exists."
+          else
+          build_core_fbneo=${{ true }}
           fi
-      - name: Install tools
+          echo "Core: MAME2003+ (getting latest version)"
+          build_core_mame2003plus=${{ false }}
+          mame2003plus_latest_version=$(git ls-remote -q https://github.com/libretro/mame2003-plus-libretro HEAD | sed -e 's:\t.*::')
+          echo "mame2003plus_latest_version=${mame2003plus_latest_version}"
+          echo "mame2003plus_latest_version=${mame2003plus_latest_version}" >> "$GITHUB_ENV"
+          mame2003plus_latest_name=${mame2003plus_latest_version:0:7}
+          echo "mame2003plus_latest_name=${mame2003plus_latest_name}"
+          echo "mame2003plus_latest_name=${mame2003plus_latest_name}" >> "$GITHUB_ENV"
+          if [ -e "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip" ]; then
+          echo "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip already exists."
+          else
+          build_core_mame2003plus=${{ true }}
+          fi
+          echo "Core: MAME (getting latest version)"
+          build_core_mame=${{ false }}
+          mame_tag_version=$(git ls-remote -q -t --sort=-refname https://github.com/libretro/mame 'lrmame*^{}' | grep -m1 lrmame | sed -e 's:\t.*::')
+          echo "mame_tag_version=${mame_tag_version}"
+          echo "mame_tag_version=${mame_tag_version}" >> "$GITHUB_ENV"
+          mame_tag_name=$(git ls-remote -q -t --sort=-refname https://github.com/libretro/mame 'lrmame*^{}' | grep -m1 lrmame | sed -e 's:^.*tags/::' -e 's:\^.*::')
+          echo "mame_tag_name=${mame_tag_name}"
+          echo "mame_tag_name=${mame_tag_name}" >> "$GITHUB_ENV"
+          if [ -e "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip" ]; then
+          echo "libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip already exists."
+          else
+          build_core_mame=${{ true }}
+          fi
+          echo "build_core_fbneo=${build_core_fbneo}" >> "$GITHUB_ENV"
+          echo "build_core_mame=${build_core_mame}" >> "$GITHUB_ENV"
+          echo "build_core_mame2003plus=${build_core_mame2003plus}" >> "$GITHUB_ENV"
+      - name: Install compiling tools and Lakka repository
+        if: ${{ ( build_core_fbneo || build_core_mame2003plus || build_core_mame ) && ! cancelled() }}
         run: |
+          cd ..
+          pwd
+          ls -la
+          git clone https://github.com/cjom/Lakka-LibreELEC.git
           apt-get install --assume-yes ca-certificates build-essential zip python3 xfonts-utils xsltproc default-jre unzip xz-utils texi2html texinfo
-          apt-get install --assume-yes libxml-parser-perl libparse-yapp-perl libjson-perl libncurses5-dev bc gawk wget zstd gperf lzop patchutils sudo
+          apt-get install --assume-yes libxml-parser-perl libparse-yapp-perl libjson-perl libncurses5-dev bc gawk wget zstd gperf lzop patchutils sudo curl
           apt-get install --assume-yes aria2 autoconf automake bison bzip2 coreutils flex g++ gcc gzip help2man libtool libtool-bin make p7zip p7zip-full rsync
-      - name: compile core
+      - name: Compile fbneo core
+        if: ${{ build_core_fbneo && ! cancelled() }}
         run: |
           pwd
-          cd ..
-          git clone https://github.com/cjom/Lakka-LibreELEC.git
-          cd Lakka-LibreELEC
-          sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${tag_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/mame/package.mk
+          ls -la
+          cd ../Lakka-LibreELEC
+          sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${fbneo_latest_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/fbneo/package.mk
+          GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/fbneo
+      - name: Compile mame2003_plus core
+        if: ${{ build_core_mame2003plus && ! cancelled() }}
+        run: |
+          pwd
+          ls -la
+          cd ../Lakka-LibreELEC
+          sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${mame2003plus_latest_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/mame2003_plus/package.mk
+          GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/mame2003_plus
+      - name: Compile mame core
+        if: ${{ build_core_mame && ! cancelled() }}
+        run: |
+          pwd
+          ls -la
+          cd ../Lakka-LibreELEC
+          sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${mame_tag_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/mame/package.mk
           GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/mame
-          mkdir ../libretro_cores_linux_armhf/cores_armhf
-          find . -name 'mamearcade_libretro.so' -type f -exec mv {} ./mame_libretro.so \;
-          zip -9 ../libretro_cores_linux_armhf/cores_armhf/mame_libretro.${tag_name}.zip mame_libretro.so
-          cd ../libretro_cores_linux_armhf
-          git add . && git commit -m "New core compiled: ${tag_name}" && git push
+      - name: Publish new cores
+        if: ${{ ( build_core_fbneo || build_core_mame2003plus || build_core_mame ) && ! cancelled() }}
+        run: |
+          pwd
+          ls -la
+          cd ../Lakka-LibreELEC
+          mkdir ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf
+          if build_core_fbneo; then
+          find . -name fbneo_libretro.so -type f -exec mv {} ./ \;
+          zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip fbneo_libretro.so
+          fi
+          if build_core_mame2003plus; then
+          find . -name mame2003_plus_libretro.so -type f -exec mv {} ./ \;
+          zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip mame2003_plus_libretro.so
+          fi
+          if build_core_mame; then
+          find . -name 'mame*_libretro.so' -type f -exec mv {} ./mame_libretro.so \;
+          zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip mame_libretro.so
+          fi
+          cd ../libretro_cores_armv7-neon-hf
+          git add . && git commit -m "New cores compiled" && git push
