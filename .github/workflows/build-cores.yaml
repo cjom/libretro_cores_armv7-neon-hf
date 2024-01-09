@@ -10,12 +10,15 @@ jobs:
     container: node:current-buster-slim
     steps:
       - name: Get latest version of cores
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd ..
           rm -rf libretro_cores_armv7-neon-hf
           apt-get update
           apt-get install --assume-yes git
-          git clone https://github.com/cjom/libretro_cores_armv7-neon-hf.git
+          git clone "https://${GITHUB_REPOSITORY_OWNER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" .
+          git config --global --add safe.directory /__w/libretro_cores_armv7-neon-hf/libretro_cores_armv7-neon-hf
           cd libretro_cores_armv7-neon-hf
           echo "Core: FBNEO (getting latest version)"
           build_core_fbneo=${{ false }}
@@ -61,6 +64,8 @@ jobs:
           echo "build_core_mame2003plus=${build_core_mame2003plus}" >> "$GITHUB_ENV"
       - name: Install compiling tools and Lakka repository
         if: ${{ ( env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd ..
           git clone https://github.com/cjom/Lakka-LibreELEC.git
@@ -87,24 +92,28 @@ jobs:
           GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/mame
       - name: Publish new cores
         if: ${{ ( env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd ../Lakka-LibreELEC
           mkdir ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf
           if $build_core_fbneo; then
-          find . -name fbneo_libretro.so -type f -exec mv {} ./ \;
+          find . -name fbneo_libretro.so -type f -exec mv -fv {} ./ \;
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip fbneo_libretro.so
           fi
           if $build_core_mame2003plus; then
-          find . -name mame2003_plus_libretro.so -type f -exec mv {} ./ \;
+          find . -name mame2003_plus_libretro.so -type f -exec mv -fv {} ./ \;
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip mame2003_plus_libretro.so
           fi
           if $build_core_mame; then
-          find . -name 'mame*_libretro.so' -type f -exec mv {} ./mame_libretro.so \;
+          find . -name mamearcade_libretro.so -type f -exec mv -fv {} ./mame_libretro.so \;
           zip -9 ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip mame_libretro.so
           fi
-          cd ../libretro_cores_armv7-neon-hf
-          git config --global --add safe.directory /__w/libretro_cores_armv7-neon-hf/libretro_cores_armv7-neon-hf
+          cd ..
+          rm -rf Lakka-LibreELEC
+          cd libretro_cores_armv7-neon-hf
+          find . -type f
           git config user.name "${GITHUB_REPOSITORY_OWNER}"
           git config user.email "${GITHUB_REPOSITORY_OWNER}@users.noreply.github.com"
           git config --local user.password ${GITHUB_TOKEN}
-          git add . && git commit -m "New cores compiled" && git push
+          git add . && git commit -m "New cores compiled $(date +'%Y-%m-%d')" && git push
