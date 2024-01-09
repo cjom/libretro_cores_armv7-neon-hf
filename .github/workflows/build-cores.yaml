@@ -17,7 +17,7 @@ jobs:
           rm -rf libretro_cores_armv7-neon-hf
           apt-get update
           apt-get install --assume-yes git
-          git clone "https://${GITHUB_REPOSITORY_OWNER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" .
+          git clone "https://${GITHUB_REPOSITORY_OWNER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config --global --add safe.directory /__w/libretro_cores_armv7-neon-hf/libretro_cores_armv7-neon-hf
           cd libretro_cores_armv7-neon-hf
           echo "Core: FBNEO (getting latest version)"
