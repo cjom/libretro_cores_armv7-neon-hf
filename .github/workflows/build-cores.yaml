@@ -24,6 +24,20 @@ jobs:
           git config --global --add safe.directory /__w/libretro_cores_armv7-neon-hf/libretro_cores_armv7-neon-hf
           cd libretro_cores_armv7-neon-hf
           mkdir -p cores_armv7-neon-hf
+          echo "Core: FBALPHA2012 (getting latest version)"
+          build_core_fbalpha2012=${{ false }}
+          fbalpha2012_latest_version=$(git ls-remote -q https://github.com/libretro/fbalpha2012 HEAD | sed -e 's:\t.*::')
+          echo "fbalpha2012_latest_version=${fbalpha2012_latest_version}"
+          echo "fbalpha2012_latest_version=${fbalpha2012_latest_version}" >> "$GITHUB_ENV"
+          fbalpha2012_latest_name=$(echo "${fbalpha2012_latest_version}" | head -c 7)
+          echo "fbalpha2012_latest_name=${fbalpha2012_latest_name}"
+          echo "fbalpha2012_latest_name=${fbalpha2012_latest_name}" >> "$GITHUB_ENV"
+          if [ -e "cores_armv7-neon-hf/fbalpha2012_libretro.${fbalpha2012_latest_name}.zip" ]; then
+          echo "fbalpha2012_libretro.${fbalpha2012_latest_name}.zip already exists."
+          else
+          build_core_fbalpha2012=${{ true }}
+          fi
+          echo "build_core_fbalpha2012=${build_core_fbalpha2012}" >> "$GITHUB_ENV"
           echo "Core: FBNEO (getting latest version)"
           build_core_fbneo=${{ false }}
           fbneo_latest_version=$(git ls-remote -q https://github.com/libretro/FBNeo HEAD | sed -e 's:\t.*::')
@@ -37,6 +51,7 @@ jobs:
           else
           build_core_fbneo=${{ true }}
           fi
+          echo "build_core_fbneo=${build_core_fbneo}" >> "$GITHUB_ENV"
           echo "Core: MAME2003+ (getting latest version)"
           build_core_mame2003plus=${{ false }}
           mame2003plus_latest_version=$(git ls-remote -q https://github.com/libretro/mame2003-plus-libretro HEAD | sed -e 's:\t.*::')
@@ -50,6 +65,7 @@ jobs:
           else
           build_core_mame2003plus=${{ true }}
           fi
+          echo "build_core_mame=${build_core_mame}" >> "$GITHUB_ENV"
           echo "Core: MAME (getting latest version)"
           build_core_mame=${{ false }}
           mame_tag_version=$(git ls-remote -q -t --sort=-refname https://github.com/libretro/mame 'lrmame*^{}' | grep -m1 lrmame | sed -e 's:\t.*::')
@@ -63,11 +79,9 @@ jobs:
           else
           build_core_mame=${{ true }}
           fi
-          echo "build_core_fbneo=${build_core_fbneo}" >> "$GITHUB_ENV"
-          echo "build_core_mame=${build_core_mame}" >> "$GITHUB_ENV"
           echo "build_core_mame2003plus=${build_core_mame2003plus}" >> "$GITHUB_ENV"
       - name: Install compiling tools and Lakka repository
-        if: ${{ ( env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
+        if: ${{ ( env.build_core_fbalpha2012 || env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -77,6 +91,20 @@ jobs:
           apt-get install --assume-yes ca-certificates build-essential zip python3 xfonts-utils xsltproc default-jre unzip xz-utils texi2html texinfo
           apt-get install --assume-yes libxml-parser-perl libparse-yapp-perl libjson-perl libncurses5-dev bc gawk wget zstd gperf lzop patchutils sudo curl
           apt-get install --assume-yes aria2 autoconf automake bison bzip2 coreutils flex g++ gcc gzip help2man libtool libtool-bin make p7zip p7zip-full rsync
+      - name: Compile fbalpha2012 core
+        if: ${{ env.build_core_fbalpha2012 && ! cancelled() }}
+        shell: bash
+        run: |
+          cd ../Lakka-LibreELEC
+          sed -i -e "/.*PKG_VERSION\=.*/{s//PKG_VERSION=\"${fbalpha2012_latest_version}\"/;:a" -e '$!N;$!ba' -e '}' packages/lakka/libretro_cores/fbalpha2012/package.mk
+          GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/fbalpha2012
+          mkdir -p "fbalpha2012_libretro.${fbalpha2012_latest_name}/extras"
+          if mv -v "build.Lakka-H3.arm-5.0-devel/install_pkg/fbalpha2012-${fbalpha2012_latest_version}/usr/lib/libretro/fbalpha2012_libretro.so" "fbalpha2012_libretro.${fbalpha2012_latest_name}"/ ; then
+          find "build.Lakka-H3.arm-5.0-devel/install_pkg/fbalpha2012-${fbalpha2012_latest_version}"/
+          rm -fv ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbalpha2012_libretro.*
+          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbalpha2012_libretro.${fbalpha2012_latest_name}.zip" "fbalpha2012_libretro.${fbalpha2012_latest_name}"
+          fi
+          rm -rf "sources/fbalpha2012/fbalpha2012-${fbalpha2012_latest_version}"
       - name: Compile fbneo core
         if: ${{ env.build_core_fbneo && ! cancelled() }}
         shell: bash
@@ -88,7 +116,7 @@ jobs:
           if mv -v "build.Lakka-H3.arm-5.0-devel/install_pkg/fbneo-${fbneo_latest_version}/usr/lib/libretro/fbneo_libretro.so" "fbneo_libretro.${fbneo_latest_name}"/ ; then
           find "build.Lakka-H3.arm-5.0-devel/install_pkg/fbneo-${fbneo_latest_version}/usr/share/libretro-database/fbneo"/ -iname 'FinalBurn Neo (*).dat' -type f -exec mv -fv {} "fbneo_libretro.${fbneo_latest_name}/extras"/ \;
           rm -fv ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.*
-          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip" "fbneo_libretro.${fbneo_latest_name}"/
+          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/fbneo_libretro.${fbneo_latest_name}.zip" "fbneo_libretro.${fbneo_latest_name}"
           fi
           rm -rf "sources/fbneo/fbneo-${fbneo_latest_version}"
       - name: Compile mame2003_plus core
@@ -103,7 +131,7 @@ jobs:
           mv -fv "build.Lakka-H3.arm-5.0-devel/install_pkg/mame2003_plus-${mame2003plus_latest_version}/usr/share/libretro-database/mame2003-plus/mame2003-plus.xml" "mame2003_plus_libretro.${mame2003plus_latest_name}/extras"/
           mv -fv "build.Lakka-H3.arm-5.0-devel/install_pkg/mame2003_plus-${mame2003plus_latest_version}/usr/share/retroarch/system" "mame2003_plus_libretro.${mame2003plus_latest_name}/extras"/
           rm -fv ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.*
-          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip" "mame2003_plus_libretro.${mame2003plus_latest_name}"/
+          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame2003_plus_libretro.${mame2003plus_latest_name}.zip" "mame2003_plus_libretro.${mame2003plus_latest_name}"
           fi
           rm -rf "sources/mame2003_plus/mame2003_plus-${mame2003plus_latest_version}"
       - name: Compile mame core
@@ -115,10 +143,10 @@ jobs:
           GIT_DISCOVERY_ACROSS_FILESYSTEM=1 CCACHE_DISABLE=1 DISTRO=Lakka PROJECT=Allwinner DEVICE=H3 ARCH=arm UBOOT_SYSTEM=capcom-home-arcade scripts/build lakka/libretro_cores/mame
           mkdir -p "mame_libretro.${mame_tag_name}/extras"
           if mv -v "build.Lakka-H3.arm-5.0-devel/install_pkg/mame-${mame_tag_version}/usr/lib/libretro/mamearcade_libretro.so" "mame_libretro.${mame_tag_name}"/mame_libretro.so ; then
-          curl -s -L -o "${mame_tag_version:2}lx.zip" "https://github.com/mamedev/mame/releases/download/${mame_tag_version:2}/${mame_tag_version:2}lx.zip" && unzip -j "${mame_tag_version:2}lx.zip" -d "mame_libretro.${mame_tag_name}/extras"/
+          curl -s -L -o "${mame_tag_name:2}lx.zip" "https://github.com/mamedev/mame/releases/download/${mame_tag_name:2}/${mame_tag_name:2}lx.zip" && unzip -j "${mame_tag_name:2}lx.zip" -d "mame_libretro.${mame_tag_name}/extras"/
           mv -fv "build.Lakka-H3.arm-5.0-devel/install_pkg/mame-${mame_tag_version}/usr/share/retroarch/system" "mame_libretro.${mame_tag_name}/extras"/
           rm -fv ../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.*
-          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip" "mame_libretro.${mame_tag_name}"/
+          zip -9 "../libretro_cores_armv7-neon-hf/cores_armv7-neon-hf/mame_libretro.${mame_tag_name}.zip" "mame_libretro.${mame_tag_name}"
           fi
           rm -rf "sources/mame/mame-${mame_tag_version}"
       - name: Publish new cores
