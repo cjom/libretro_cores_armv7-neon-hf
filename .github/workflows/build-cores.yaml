@@ -85,7 +85,7 @@ jobs:
           echo "build_core_mame=${build_core_mame}" >> "$GITHUB_ENV"
           echo "build_core_mame=${build_core_mame}"
       - name: Install compiling tools and Lakka repository
-        if: ${{ ( env.build_core_fbalpha2012 || env.build_core_fbneo || env.build_core_mame2003plus || env.build_core_mame ) && ! cancelled() }}
+        if: ${{ ( env.build_core_fbalpha2012 == 'true' || env.build_core_fbneo == 'true' || env.build_core_mame2003plus == 'true' || env.build_core_mame == 'true' ) && ! cancelled() }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -96,7 +96,7 @@ jobs:
           apt-get install --assume-yes libxml-parser-perl libparse-yapp-perl libjson-perl libncurses5-dev bc gawk wget zstd gperf lzop patchutils sudo curl
           apt-get install --assume-yes aria2 autoconf automake bison bzip2 coreutils flex g++ gcc gzip help2man libtool libtool-bin make p7zip p7zip-full rsync
       - name: Compile fbalpha2012 core
-        if: ${{ env.build_core_fbalpha2012 == 1 && ! cancelled() }}
+        if: ${{ env.build_core_fbalpha2012 == 'true' && ! cancelled() }}
         shell: bash
         run: |
           cd ../Lakka-LibreELEC
@@ -110,7 +110,7 @@ jobs:
           fi
           rm -rf "sources/fbalpha2012/fbalpha2012-${fbalpha2012_latest_version}"
       - name: Compile fbneo core
-        if: ${{ env.build_core_fbneo == 1 && ! cancelled() }}
+        if: ${{ env.build_core_fbneo == 'true' && ! cancelled() }}
         shell: bash
         run: |
           cd ../Lakka-LibreELEC
@@ -124,7 +124,7 @@ jobs:
           fi
           rm -rf "sources/fbneo/fbneo-${fbneo_latest_version}"
       - name: Compile mame2003_plus core
-        if: ${{ env.build_core_mame2003plus == 1 && ! cancelled() }}
+        if: ${{ env.build_core_mame2003plus == 'true' && ! cancelled() }}
         shell: bash
         run: |
           cd ../Lakka-LibreELEC
@@ -138,7 +138,7 @@ jobs:
           fi
           rm -rf "sources/mame2003_plus/mame2003_plus-${mame2003plus_latest_version}"
       - name: Compile mame core
-        if: ${{ env.build_core_mame == 1 && ! cancelled() }}
+        if: ${{ env.build_core_mame == 'true' && ! cancelled() }}
         shell: bash
         run: |
           cd ../Lakka-LibreELEC
